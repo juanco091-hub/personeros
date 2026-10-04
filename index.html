@@ -167,14 +167,13 @@
     <div id="coordinadoresModal" class="fixed inset-0 bg-slate-900/75 z-50 hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
         <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 transform transition-all max-h-[90vh] flex flex-col">
             
-            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 flex justify-between items-center flex-shrink-0 border-b border-indigo-900/50">
+            <div class="bg-slate-900 text-white p-3.5 flex justify-between items-center flex-shrink-0 border-b border-slate-800">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-amber-400">
-                        <i class="fa-solid fa-user-tie text-base"></i>
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                        <i class="fa-solid fa-user-tie text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-xs sm:text-sm text-white leading-tight uppercase tracking-wide">Directorio de Coordinadores</h3>
-                        <p class="text-[10px] text-indigo-200" id="modalCoordinadoresSub">Provincia</p>
+                        <h3 class="font-black text-xs sm:text-sm text-white leading-tight uppercase tracking-wide">Directorio de Coordinadores</h3>
                     </div>
                 </div>
                 <button onclick="cerrarModalCoordinadores()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xs transition">
@@ -182,12 +181,12 @@
                 </button>
             </div>
             
-            <div id="coordinadoresModalBody" class="p-3.5 text-xs text-slate-700 space-y-3.5 overflow-y-auto custom-scroll flex-1 bg-slate-50">
+            <div id="coordinadoresModalBody" class="p-3 text-xs text-slate-700 space-y-3 overflow-y-auto custom-scroll flex-1 bg-slate-50/50">
             </div>
 
-            <div class="bg-slate-50 p-3 border-t border-slate-200 text-center flex-shrink-0">
-                <button onclick="cerrarModalCoordinadores()" class="w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md hover:bg-slate-900 transition">
-                    Cerrar Directorio
+            <div class="bg-slate-50 p-2.5 border-t border-slate-200 text-center flex-shrink-0">
+                <button onclick="cerrarModalCoordinadores()" class="w-full py-2 bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md hover:bg-slate-900 transition">
+                    Cerrar
                 </button>
             </div>
         </div>
@@ -424,27 +423,43 @@
             if (elUbicacion) elUbicacion.classList.toggle('hidden');
         }
 
-        // LÓGICA DEL ACORDEÓN EN EL MODAL DE COORDINADORES
-        function toggleAcordeonDistrito(distId) {
-            const bodyDist = document.getElementById(`dist-body-${distId}`);
-            const iconDist = document.getElementById(`dist-icon-${distId}`);
-            if (bodyDist) {
-                bodyDist.classList.toggle('hidden');
-                if (iconDist) {
-                    iconDist.classList.toggle('rotate-180');
+        // ACORDEÓN ÚNICO: Al abrir un distrito se cierran todos los demás
+        function toggleAcordeonDistrito(targetDistId) {
+            const allBodies = document.querySelectorAll('[id^="dist-body-"]');
+            const allIcons = document.querySelectorAll('[id^="dist-icon-"]');
+
+            allBodies.forEach(b => {
+                if (b.id !== `dist-body-${targetDistId}`) {
+                    b.classList.add('hidden');
+                }
+            });
+
+            allIcons.forEach(i => {
+                if (i.id !== `dist-icon-${targetDistId}`) {
+                    i.classList.remove('rotate-180');
+                }
+            });
+
+            const targetBody = document.getElementById(`dist-body-${targetDistId}`);
+            const targetIcon = document.getElementById(`dist-icon-${targetDistId}`);
+
+            if (targetBody) {
+                const estabaOculto = targetBody.classList.contains('hidden');
+                if (estabaOculto) {
+                    targetBody.classList.remove('hidden');
+                    if (targetIcon) targetIcon.classList.add('rotate-180');
+                } else {
+                    targetBody.classList.add('hidden');
+                    if (targetIcon) targetIcon.classList.remove('rotate-180');
                 }
             }
         }
 
-        // MODAL DE COORDINADORES CON REGLAS SOLICITADAS
+        // MODAL DE COORDINADORES CON JERARQUÍA SUAVE Y CONCATENACIÓN DINÁMICA
         function abrirModalCoordinadores() {
             document.body.classList.add('modal-open');
             const modal = document.getElementById('coordinadoresModal');
             const body = document.getElementById('coordinadoresModalBody');
-            const sub = document.getElementById('modalCoordinadoresSub');
-
-            const provNombreLimpio = (currentProvinceKey || '').replace(/\\n/g, ' ').replace(/\n/g, ' ');
-            sub.innerText = `Provincia: ${provNombreLimpio}`;
 
             const modoLlamadaActivo = (typeof CONFIG !== 'undefined' && CONFIG.MODO_LLAMADA_ACTIVO === true);
 
@@ -452,13 +467,19 @@
             const provinciales = [];
             const distritalesMap = {};
             const localesPorDistritoMap = {};
-
             const todosDistritos = new Set();
+
+            let regionNombreDataset = '';
 
             rawData.forEach(row => {
                 const dist = getFieldValue(row, ['DISTRITO']) || 'DISTRITO NO ESPECIFICADO';
                 const local = getFieldValue(row, ['NOMBRE LOCAL', 'NOMBRE_LOCAL', 'LOCAL']) || 'LOCAL NO ESPECIFICADO';
+                const regVal = getFieldValue(row, ['REGION', 'DEPARTAMENTO']);
                 
+                if (regVal && !regionNombreDataset) {
+                    regionNombreDataset = regVal;
+                }
+
                 todosDistritos.add(dist);
 
                 if (!localesPorDistritoMap[dist]) {
@@ -504,7 +525,9 @@
                 }
             });
 
-            // RENDERIZADO DE TARJETA DE COORDINADOR (2 LÍNEAS, TELÉFONO MÁS GRANDE Y BOTÓN LLAMAR SEGÚN CONFIG)
+            const regionFinal = regionNombreDataset || (typeof CONFIG !== 'undefined' ? CONFIG.NOMBRE_REGION : 'PASCO');
+            const provNombreLimpio = (currentProvinceKey || '').replace(/\\n/g, ' ').replace(/\n/g, ' ').trim();
+
             function renderCardCoord(c) {
                 const nombreCompleto = `${c.nombres} ${c.apellidos}`.trim() || 'Nombre No Registrado';
                 
@@ -512,7 +535,7 @@
                 if (modoLlamadaActivo) {
                     if (c.celular) {
                         botonLlamarHtml = `
-                            <a href="tel:${c.celular}" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 shadow-xs transition">
+                            <a href="tel:${c.celular}" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 shadow-2xs transition">
                                 <i class="fa-solid fa-phone text-xs"></i> Llamar
                             </a>
                         `;
@@ -527,7 +550,6 @@
 
                 return `
                     <div class="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs space-y-1.5">
-                        <!-- Primera línea: Nombre completo (espacio total) -->
                         <div class="flex items-center gap-2">
                             <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-[10px] flex-shrink-0 font-bold">
                                 <i class="fa-solid fa-user"></i>
@@ -535,12 +557,11 @@
                             <p class="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight break-words">${nombreCompleto}</p>
                         </div>
                         
-                        <!-- Segunda línea: Teléfono (2 puntos más grande) y Botón de Llamar -->
                         <div class="flex items-center justify-between pt-1 border-t border-slate-100">
                             <div>
                                 ${c.celular ? `
                                     <p class="text-xs sm:text-sm font-black text-slate-800 tracking-wide">
-                                        <i class="fa-solid fa-phone text-indigo-500 text-[10px] mr-1"></i>${c.celular}
+                                        <i class="fa-solid fa-phone text-amber-600 text-[10px] mr-1"></i>${c.celular}
                                     </p>
                                 ` : `
                                     <p class="text-[11px] text-slate-400 italic">Sin celular registrado</p>
@@ -554,56 +575,48 @@
                 `;
             }
 
-            function renderSinCoordinador(mensaje = "Sin coordinador asignado") {
+            function renderSinCoordinador() {
                 return `
-                    <div class="bg-slate-100/80 border border-slate-200/80 p-2.5 rounded-xl text-center text-slate-400 text-[11px] italic font-medium">
-                        ${mensaje}
+                    <div class="bg-white/80 border border-slate-200/80 p-2.5 rounded-xl text-center text-slate-400 text-[11px] italic font-medium">
+                        Sin coordinador asignado
                     </div>
                 `;
             }
 
             let html = '';
 
-            // 1. COORDINADOR REGIONAL (ENCABEZADO DESTACADO ORO/AMBAR)
+            // 1. COORDINADOR REGIONAL (FONDO ÁMBAR SUAVE)
             html += `
-                <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl shadow-md overflow-hidden">
-                    <div class="px-3.5 py-2.5 flex items-center justify-between border-b border-white/20">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-crown text-amber-200 text-sm"></i>
-                            <h4 class="font-black text-xs sm:text-sm uppercase tracking-wide text-white">Coordinador Regional</h4>
-                        </div>
-                        <span class="text-[9px] bg-white/20 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider text-amber-100">Región</span>
+                <div class="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3 space-y-2">
+                    <div class="flex items-center gap-2 border-b border-amber-200/80 pb-1.5">
+                        <i class="fa-solid fa-user-tie text-amber-700 text-sm"></i>
+                        <h4 class="font-black text-xs sm:text-sm uppercase tracking-wide text-amber-950">
+                            COORDINADOR REGIONAL DE ${regionFinal.toUpperCase()}
+                        </h4>
                     </div>
-                    <div class="p-2.5 bg-amber-50/20 space-y-2">
+                    <div class="space-y-2">
                         ${regionales.length > 0 ? regionales.map(c => renderCardCoord(c)).join('') : renderSinCoordinador()}
                     </div>
                 </div>
             `;
 
-            // 2. COORDINADOR PROVINCIAL (ENCABEZADO DESTACADO AZUL/INDIGO)
+            // 2. COORDINADOR PROVINCIAL (FONDO AZUL/INDIGO SUAVE)
             html += `
-                <div class="bg-gradient-to-r from-indigo-800 to-blue-900 text-white rounded-2xl shadow-md overflow-hidden">
-                    <div class="px-3.5 py-2.5 flex items-center justify-between border-b border-white/20">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-building text-indigo-200 text-sm"></i>
-                            <h4 class="font-black text-xs sm:text-sm uppercase tracking-wide text-white">Coordinador Provincial</h4>
-                        </div>
-                        <span class="text-[9px] bg-white/20 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider text-indigo-100 truncate max-w-[120px]">${provNombreLimpio}</span>
+                <div class="bg-indigo-50/70 border border-indigo-200/90 rounded-2xl p-3 space-y-2">
+                    <div class="flex items-center gap-2 border-b border-indigo-200/80 pb-1.5">
+                        <i class="fa-solid fa-user-tie text-indigo-700 text-sm"></i>
+                        <h4 class="font-black text-xs sm:text-sm uppercase tracking-wide text-indigo-950">
+                            COORDINADOR PROVINCIAL DE ${provNombreLimpio.toUpperCase()}
+                        </h4>
                     </div>
-                    <div class="p-2.5 bg-indigo-50/20 space-y-2">
+                    <div class="space-y-2">
                         ${provinciales.length > 0 ? provinciales.map(c => renderCardCoord(c)).join('') : renderSinCoordinador()}
                     </div>
                 </div>
             `;
 
-            // 3. SECCIÓN DE DISTRITOS CON DESPLIEGUE (ACORDEÓN)
-            html += `
-                <div class="pt-1 space-y-2">
-                    <div class="flex items-center gap-2 px-1">
-                        <i class="fa-solid fa-map-location-dot text-blue-600 text-xs"></i>
-                        <h4 class="font-black text-slate-800 text-xs uppercase tracking-wider">Coordinadores por Distrito y Locales</h4>
-                    </div>
-            `;
+            // 3. SECCIÓN DE DISTRITOS CON DESPLIEGUE
+            html += `<div class="space-y-2 pt-1">`;
 
             Array.from(todosDistritos).sort().forEach((dist, idxDist) => {
                 const coordsDist = distritalesMap[dist] || [];
@@ -611,46 +624,42 @@
                 const distSafeId = `dist-${idxDist}`;
 
                 html += `
-                    <div class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-                        <!-- Botón Encabezado de Distrito (Acordeón) -->
-                        <button onclick="toggleAcordeonDistrito('${distSafeId}')" class="w-full text-left bg-slate-100 hover:bg-slate-200/80 p-3 flex items-center justify-between transition border-b border-slate-200/60">
+                    <div class="bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                        <!-- Botón Distrito -->
+                        <button onclick="toggleAcordeonDistrito('${distSafeId}')" class="w-full text-left p-3 flex items-center justify-between transition hover:bg-slate-200/60 border-b border-slate-200/60">
                             <div class="flex items-center gap-2 min-w-0">
-                                <span class="w-2.5 h-2.5 rounded-full bg-blue-600 flex-shrink-0"></span>
-                                <h5 class="font-black text-xs sm:text-sm text-slate-900 uppercase truncate">${dist}</h5>
+                                <i class="fa-solid fa-location-dot text-amber-600 text-xs"></i>
+                                <h5 class="font-black text-xs sm:text-sm text-slate-800 uppercase truncate">
+                                    COORDINADOR ${dist.toUpperCase()}
+                                </h5>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
-                                <span class="text-[9px] font-extrabold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">${listaLocales.length} locales</span>
+                                <span class="text-[9px] font-extrabold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">${listaLocales.length} locales</span>
                                 <i id="dist-icon-${distSafeId}" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform duration-200"></i>
                             </div>
                         </button>
 
-                        <!-- Contenido Desplegable del Distrito -->
-                        <div id="dist-body-${distSafeId}" class="hidden p-3 bg-slate-50/60 space-y-3">
-                            <!-- Coordinador Distrital -->
+                        <!-- Cuerpo Desplegable -->
+                        <div id="dist-body-${distSafeId}" class="hidden p-3 bg-slate-50 space-y-3 border-t border-slate-200/60">
+                            <!-- Datos del Coordinador Distrital -->
                             <div class="space-y-1.5">
-                                <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-900 border-b border-blue-100 pb-1">
-                                    <i class="fa-solid fa-user-check text-blue-600"></i> Coordinador Distrital
-                                </div>
-                                ${coordsDist.length > 0 ? coordsDist.map(c => renderCardCoord(c)).join('') : renderSinCoordinador('Sin coordinador distrital asignado')}
+                                ${coordsDist.length > 0 ? coordsDist.map(c => renderCardCoord(c)).join('') : renderSinCoordinador()}
                             </div>
 
-                            <!-- Locales de Votación dentro de este Distrito -->
-                            <div class="space-y-2.5 pt-2 border-t border-slate-200/70">
-                                <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600">
-                                    <i class="fa-solid fa-school text-amber-600"></i> Locales de Votación
-                                </div>
+                            <!-- Lista de Locales de Votación -->
+                            <div class="space-y-2.5 pt-2 border-t border-slate-200/80">
                 `;
 
                 listaLocales.forEach(localName => {
                     const coordsLocal = distritalesMap[`LOCAL_${localName}`] || [];
                     html += `
                         <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
-                            <div class="text-[11px] font-extrabold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-1">
-                                <i class="fa-solid fa-building-columns text-amber-600 text-[10px]"></i>
-                                <span class="truncate">${localName}</span>
+                            <div class="text-xs font-black text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-1">
+                                <i class="fa-solid fa-school text-slate-500 text-[11px]"></i>
+                                <span class="truncate uppercase">${localName}</span>
                             </div>
                             <div class="space-y-1.5">
-                                ${coordsLocal.length > 0 ? coordsLocal.map(c => renderCardCoord(c)).join('') : renderSinCoordinador('Sin coordinador de local')}
+                                ${coordsLocal.length > 0 ? coordsLocal.map(c => renderCardCoord(c)).join('') : renderSinCoordinador()}
                             </div>
                         </div>
                     `;
