@@ -423,8 +423,10 @@
             if (elUbicacion) elUbicacion.classList.toggle('hidden');
         }
 
-        // ACORDEÓN ÚNICO: Al abrir un distrito se cierran todos los demás
+        // ACORDEÓN ÚNICO CON RESALTADO VISUAL COMPLETO DEL CONTENEDOR DESPLEGADO
         function toggleAcordeonDistrito(targetDistId) {
+            const allContainers = document.querySelectorAll('[id^="dist-card-"]');
+            const allBtns = document.querySelectorAll('[id^="dist-btn-"]');
             const allBodies = document.querySelectorAll('[id^="dist-body-"]');
             const allIcons = document.querySelectorAll('[id^="dist-icon-"]');
 
@@ -440,6 +442,20 @@
                 }
             });
 
+            allContainers.forEach(c => {
+                if (c.id !== `dist-card-${targetDistId}`) {
+                    c.className = 'bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs overflow-hidden transition-all duration-200';
+                }
+            });
+
+            allBtns.forEach(btn => {
+                if (btn.id !== `dist-btn-${targetDistId}`) {
+                    btn.className = 'w-full text-left p-3 flex items-center justify-between transition hover:bg-slate-200/60';
+                }
+            });
+
+            const targetCard = document.getElementById(`dist-card-${targetDistId}`);
+            const targetBtn = document.getElementById(`dist-btn-${targetDistId}`);
             const targetBody = document.getElementById(`dist-body-${targetDistId}`);
             const targetIcon = document.getElementById(`dist-icon-${targetDistId}`);
 
@@ -448,14 +464,17 @@
                 if (estabaOculto) {
                     targetBody.classList.remove('hidden');
                     if (targetIcon) targetIcon.classList.add('rotate-180');
+                    if (targetCard) targetCard.className = 'bg-slate-100/90 rounded-2xl border-2 border-blue-500 ring-2 ring-blue-500/20 shadow-md overflow-hidden transition-all duration-200';
+                    if (targetBtn) targetBtn.className = 'w-full text-left p-3 flex items-center justify-between transition bg-blue-50/80 border-b border-blue-200';
                 } else {
                     targetBody.classList.add('hidden');
                     if (targetIcon) targetIcon.classList.remove('rotate-180');
+                    if (targetCard) targetCard.className = 'bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs overflow-hidden transition-all duration-200';
+                    if (targetBtn) targetBtn.className = 'w-full text-left p-3 flex items-center justify-between transition hover:bg-slate-200/60';
                 }
             }
         }
 
-        // MODAL DE COORDINADORES CON JERARQUÍA SUAVE Y CONCATENACIÓN DINÁMICA
         function abrirModalCoordinadores() {
             document.body.classList.add('modal-open');
             const modal = document.getElementById('coordinadoresModal');
@@ -602,8 +621,8 @@
 
             // 2. COORDINADOR PROVINCIAL (FONDO AZUL/INDIGO SUAVE)
             html += `
-                <div class="bg-indigo-50/70 border border-indigo-200/90 rounded-2xl p-3 space-y-2">
-                    <div class="flex items-center gap-2 border-b border-indigo-200/80 pb-1.5">
+                <div class="bg-indigo-50/80 border border-indigo-300 rounded-2xl p-3 space-y-2">
+                    <div class="flex items-center gap-2 border-b border-indigo-200 pb-1.5">
                         <i class="fa-solid fa-user-tie text-indigo-700 text-sm"></i>
                         <h4 class="font-black text-xs sm:text-sm uppercase tracking-wide text-indigo-950">
                             COORDINADOR PROVINCIAL DE ${provNombreLimpio.toUpperCase()}
@@ -615,7 +634,7 @@
                 </div>
             `;
 
-            // 3. SECCIÓN DE DISTRITOS CON DESPLIEGUE
+            // 3. SECCIÓN DE DISTRITOS CON DESPLIEGUE Y FONDOS DISTINTIVOS
             html += `<div class="space-y-2 pt-1">`;
 
             Array.from(todosDistritos).sort().forEach((dist, idxDist) => {
@@ -624,9 +643,9 @@
                 const distSafeId = `dist-${idxDist}`;
 
                 html += `
-                    <div class="bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                    <div id="dist-card-${distSafeId}" class="bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs overflow-hidden transition-all duration-200">
                         <!-- Botón Distrito -->
-                        <button onclick="toggleAcordeonDistrito('${distSafeId}')" class="w-full text-left p-3 flex items-center justify-between transition hover:bg-slate-200/60 border-b border-slate-200/60">
+                        <button id="dist-btn-${distSafeId}" onclick="toggleAcordeonDistrito('${distSafeId}')" class="w-full text-left p-3 flex items-center justify-between transition hover:bg-slate-200/60">
                             <div class="flex items-center gap-2 min-w-0">
                                 <i class="fa-solid fa-location-dot text-amber-600 text-xs"></i>
                                 <h5 class="font-black text-xs sm:text-sm text-slate-800 uppercase truncate">
@@ -646,16 +665,16 @@
                                 ${coordsDist.length > 0 ? coordsDist.map(c => renderCardCoord(c)).join('') : renderSinCoordinador()}
                             </div>
 
-                            <!-- Lista de Locales de Votación -->
+                            <!-- Lista de Locales de Votación (Fondo Esmeralda/Verde Suave Distintivo) -->
                             <div class="space-y-2.5 pt-2 border-t border-slate-200/80">
                 `;
 
                 listaLocales.forEach(localName => {
                     const coordsLocal = distritalesMap[`LOCAL_${localName}`] || [];
                     html += `
-                        <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
-                            <div class="text-xs font-black text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-1">
-                                <i class="fa-solid fa-school text-slate-500 text-[11px]"></i>
+                        <div class="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs space-y-1.5">
+                            <div class="text-xs font-black text-emerald-950 flex items-center gap-1.5 border-b border-emerald-200/60 pb-1">
+                                <i class="fa-solid fa-school text-emerald-700 text-[11px]"></i>
                                 <span class="truncate uppercase">${localName}</span>
                             </div>
                             <div class="space-y-1.5">
